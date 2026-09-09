@@ -3,7 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'device_info_service.dart';
 import 'situation_engine.dart';
-
+import 'trusted_contacts.dart';
 
 void main() {
   runApp(const AIGuardianApp());
@@ -287,6 +287,38 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+              const SizedBox(height: 14),
+
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const TrustedContactsScreen(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.people_alt_rounded),
+                  label: const Text(
+                    'TRUSTED CONTACTS',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white70,
+                    side: BorderSide(
+                      color: const Color(0xFF6C63FF).withOpacity(0.5),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(17),
+                    ),
+                  ),
+                ),
+              ),
 
               const SizedBox(height: 20),
             ],
@@ -380,6 +412,43 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
       setState(() {
         _loading = false;
       });
+    }
+  }
+  Future<void> _findSafePlace() async {
+    final location = _deviceInfo?.location;
+
+    if (location == null) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Current location is unavailable'),
+        ),
+      );
+      return;
+    }
+
+    final lat = location.latitude;
+    final lon = location.longitude;
+
+    final uri = Uri.parse(
+      'https://www.google.com/maps/search/?api=1'
+          '&query=police+station+near+$lat,$lon',
+    );
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+    } else {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to open Maps'),
+        ),
+      );
     }
   }
   Widget _packetRow(String title, String value) {
@@ -751,7 +820,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
               width: double.infinity,
               height: 58,
               child: ElevatedButton.icon(
-                onPressed: () {},
+                onPressed: _findSafePlace,
                 icon: const Icon(Icons.map_rounded),
                 label: const Text(
                   'FIND SAFE PLACE',
