@@ -529,6 +529,152 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
       );
     }
   }
+  Future<void> _prepareEmergencyAlert() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final names = prefs.getStringList('contact_names') ?? [];
+    final phones = prefs.getStringList('contact_phones') ?? [];
+
+    if (phones.isEmpty) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Add trusted contacts first.'),
+        ),
+      );
+
+      return;
+    }
+
+    final location = _deviceInfo?.location;
+
+    final locationText = location != null
+        ? '${location.latitude.toStringAsFixed(5)}, '
+        '${location.longitude.toStringAsFixed(5)}'
+        : 'Location unavailable';
+
+    final batteryText = _deviceInfo != null
+        ? '${_deviceInfo!.battery}%'
+        : 'Unavailable';
+
+    final networkText =
+        _deviceInfo?.network ?? 'Unavailable';
+
+    final message = '''
+🚨 AI GUARDIAN EMERGENCY
+
+Situation: ${widget.result.type.name.toUpperCase()}
+Urgency: ${widget.result.urgency}
+
+Message:
+"${widget.spokenText}"
+
+Location: $locationText
+Battery: $batteryText
+Network: $networkText
+
+AI Guidance:
+${widget.result.guidance}
+''';
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(
+                Icons.warning_rounded,
+                color: Colors.redAccent,
+              ),
+              SizedBox(width: 10),
+              Text('Emergency Alert'),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Alert will be prepared for:',
+                    style: TextStyle(
+                      color: Colors.white54,
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  ...List.generate(
+                    names.length < phones.length
+                        ? names.length
+                        : phones.length,
+                        (index) => Padding(
+                      padding:
+                      const EdgeInsets.only(bottom: 6),
+                      child: Text(
+                        '✓ ${names[index]}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 15),
+
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF11141B),
+                      borderRadius:
+                      BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      message,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        height: 1.5,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () =>
+                  Navigator.pop(dialogContext),
+              child: const Text('CANCEL'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Emergency alert prepared for '
+                          '${phones.length} trusted contact(s).',
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.send_rounded),
+              label: const Text('PREPARE ALERT'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -844,6 +990,31 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
                   ],
                 ),
               ),
+            const SizedBox(height: 18),
+
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: OutlinedButton.icon(
+                onPressed: _prepareEmergencyAlert,
+                icon: const Icon(Icons.send_rounded),
+                label: const Text(
+                  'ALERT TRUSTED CONTACTS',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: BorderSide(
+                    color: Colors.redAccent.withOpacity(0.6),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(17),
+                  ),
+                ),
+              ),
+            ),
 
             const SizedBox(height: 18),
 
