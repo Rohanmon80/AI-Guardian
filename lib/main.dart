@@ -4,7 +4,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'device_info_service.dart';
 import 'situation_engine.dart';
 import 'trusted_contacts.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   runApp(const AIGuardianApp());
 }
@@ -481,13 +481,44 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
       ),
     );
   }
-  Future<void> _callMom() async {
-    const phoneNumber = 'tel:+919398524588';
+  Future<void> _callPrimaryContact() async {
+    final prefs = await SharedPreferences.getInstance();
 
-    final uri = Uri.parse(phoneNumber);
+    final names = prefs.getStringList('contact_names') ?? [];
+    final phones = prefs.getStringList('contact_phones') ?? [];
+    final primaryIndex = prefs.getInt('primary_contact') ?? 0;
+
+    if (phones.isEmpty || primaryIndex >= phones.length) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No primary trusted contact configured.',
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    final phone = phones[primaryIndex];
+    final name = names.length > primaryIndex
+        ? names[primaryIndex]
+        : 'Trusted contact';
+
+    final uri = Uri.parse('tel:$phone');
 
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Calling $name...'),
+        ),
+      );
     } else {
       if (!mounted) return;
 
@@ -651,7 +682,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
             const SizedBox(height: 20),
 
             GestureDetector(
-              onTap: _callMom,
+              onTap: _callPrimaryContact,
               child: ActionCard(
                 icon: Icons.phone_rounded,
                 title: 'Primary Contact',
