@@ -5,6 +5,7 @@ import 'device_info_service.dart';
 import 'situation_engine.dart';
 import 'trusted_contacts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:share_plus/share_plus.dart';
 void main() {
   runApp(const AIGuardianApp());
 }
@@ -243,6 +244,43 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
 
               const SizedBox(height: 22),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    final result = SituationEngine().analyze(
+                      'I am in danger, please help me',
+                    );
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => EmergencyScreen(
+                          spokenText: 'I am in danger, please help me',
+                          result: result,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.warning_rounded),
+                  label: const Text(
+                    'QUICK EMERGENCY',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.redAccent,
+                    side: const BorderSide(
+                      color: Colors.redAccent,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(17),
+                    ),
+                  ),
+                ),
+              ),
 
               Text(
                 _isListening
@@ -428,18 +466,53 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
       return;
     }
 
+    String placeType;
+    String placeLabel;
+
+    switch (widget.result.type) {
+      case EmergencyType.accident:
+      case EmergencyType.injury:
+        placeType = 'hospital';
+        placeLabel = 'nearest hospital';
+
+        break;
+
+      case EmergencyType.lost:
+      case EmergencyType.lowBattery:
+        placeType = 'public place';
+        placeLabel = 'safe public place';
+
+        break;
+
+      case EmergencyType.following:
+      case EmergencyType.danger:
+      case EmergencyType.unknown:
+        placeType = 'police station';
+        placeLabel = 'nearest police station';
+
+        break;
+    }
+
     final lat = location.latitude;
     final lon = location.longitude;
 
     final uri = Uri.parse(
       'https://www.google.com/maps/search/?api=1'
-          '&query=police+station+near+$lat,$lon',
+          '&query=${Uri.encodeComponent('$placeType near $lat,$lon')}',
     );
 
     if (await canLaunchUrl(uri)) {
       await launchUrl(
         uri,
         mode: LaunchMode.externalApplication,
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Opening $placeLabel...'),
+        ),
       );
     } else {
       if (!mounted) return;
@@ -449,6 +522,51 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
           content: Text('Unable to open Maps'),
         ),
       );
+    }
+  }
+  String _getAdaptiveMode() {
+    final battery = _deviceInfo?.battery ?? 100;
+    final network = _deviceInfo?.network ?? 'Unavailable';
+    final location = _deviceInfo?.location;
+
+    final hasNetwork =
+        network != 'No connection' && network != 'Unavailable';
+
+    if (battery <= 10 && !hasNetwork) {
+      return 'CRITICAL OFFLINE MODE';
+    }
+
+    if (battery <= 20) {
+      return 'LOW BATTERY MODE';
+    }
+
+    if (!hasNetwork) {
+      return 'OFFLINE MODE';
+    }
+
+    if (location == null) {
+      return 'LOCATION LIMITED MODE';
+    }
+
+    return 'FULL EMERGENCY MODE';
+  }
+
+  String _getAdaptiveMessage() {
+    switch (_getAdaptiveMode()) {
+      case 'CRITICAL OFFLINE MODE':
+        return 'Battery and network are critical. Prioritize immediate local safety and conserve device power.';
+
+      case 'LOW BATTERY MODE':
+        return 'Battery is low. AI Guardian prioritizes essential emergency actions and location sharing.';
+
+      case 'OFFLINE MODE':
+        return 'Network is unavailable. Follow local emergency guidance and move toward a safe public location.';
+
+      case 'LOCATION LIMITED MODE':
+        return 'Location is unavailable. Emergency actions can continue, but location cannot be included reliably.';
+
+      default:
+        return 'Device conditions are good. Full emergency assistance is available.';
     }
   }
   Widget _packetRow(String title, String value) {
@@ -654,16 +772,13 @@ ${widget.result.guidance}
               child: const Text('CANCEL'),
             ),
             ElevatedButton.icon(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.pop(dialogContext);
 
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Emergency alert prepared for '
-                          '${phones.length} trusted contact(s).',
-                    ),
+                await SharePlus.instance.share(
+                  ShareParams(
+                    text: message,
+                    subject: 'AI Guardian Emergency Alert',
                   ),
                 );
               },
@@ -673,6 +788,47 @@ ${widget.result.guidance}
           ],
         );
       },
+    );
+  }
+  Widget _timelineItem(
+      IconData icon,
+      String title,
+      String subtitle,
+      ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            icon,
+            size: 22,
+            color: Colors.greenAccent,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.white54,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -914,107 +1070,154 @@ ${widget.result.guidance}
                 ],
               ),
             ),
+
+        const SizedBox(height: 15),
+
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF11141B),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: Colors.orangeAccent.withOpacity(0.35),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(
+                    Icons.auto_awesome_rounded,
+                    color: Colors.orangeAccent,
+                  ),
+                  SizedBox(width: 10),
+                  Text(
+                    'ADAPTIVE EMERGENCY MODE',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              Text(
+                _getAdaptiveMode(),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orangeAccent,
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              Text(
+                _getAdaptiveMessage(),
+                style: const TextStyle(
+                  color: Colors.white70,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 18),
+
+
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF11141B),
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(
+                    Icons.timeline_rounded,
+                    color: Color(0xFF6C63FF),
+                  ),
+                  SizedBox(width: 10),
+                  Text(
+                    'AI RESPONSE TIMELINE',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ],
+              ),
+
               const SizedBox(height: 18),
 
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF11141B),
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(
-                    color: const Color(0xFF6C63FF).withOpacity(0.35),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(
-                          Icons.inventory_2_rounded,
-                          color: Color(0xFF6C63FF),
-                        ),
-                        SizedBox(width: 10),
-                        Text(
-                          'EMERGENCY PACKET',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 18),
-
-                    _packetRow(
-                      'Situation',
-                      widget.result.type.name.toUpperCase(),
-                    ),
-
-                    _packetRow(
-                      'Urgency',
-                      widget.result.urgency,
-                    ),
-
-                    _packetRow(
-                      'Message',
-                      widget.spokenText,
-                    ),
-
-                    _packetRow(
-                      'Contact',
-                      widget.result.requestedContact ?? 'Trusted contact',
-                    ),
-
-                    _packetRow(
-                      'Battery',
-                      _deviceInfo != null
-                          ? '${_deviceInfo!.battery}%'
-                          : 'Unavailable',
-                    ),
-
-                    _packetRow(
-                      'Network',
-                      _deviceInfo?.network ?? 'Unavailable',
-                    ),
-
-                    _packetRow(
-                      'Location',
-                      _deviceInfo?.location != null
-                          ? '${_deviceInfo!.location!.latitude.toStringAsFixed(5)}, '
-                          '${_deviceInfo!.location!.longitude.toStringAsFixed(5)}'
-                          : 'Unavailable',
-                    ),
-                  ],
-                ),
+              _timelineItem(
+                Icons.mic_rounded,
+                'Understood',
+                'Voice input captured',
               ),
-            const SizedBox(height: 18),
 
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: OutlinedButton.icon(
-                onPressed: _prepareEmergencyAlert,
-                icon: const Icon(Icons.send_rounded),
-                label: const Text(
-                  'ALERT TRUSTED CONTACTS',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: BorderSide(
-                    color: Colors.redAccent.withOpacity(0.6),
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(17),
-                  ),
-                ),
+              _timelineItem(
+                Icons.psychology_rounded,
+                'Analyzed',
+                'Situation classified as ${widget.result.type.name}',
+              ),
+
+              _timelineItem(
+                Icons.memory_rounded,
+                'Context checked',
+                'Battery, network and location evaluated',
+              ),
+
+              _timelineItem(
+                Icons.auto_awesome_rounded,
+                'Adapted',
+                _getAdaptiveMode(),
+              ),
+
+              _timelineItem(
+                Icons.shield_rounded,
+                'Ready to act',
+                'Emergency assistance prepared',
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 18),
+
+        SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: OutlinedButton.icon(
+            onPressed: _prepareEmergencyAlert,
+            icon: const Icon(Icons.send_rounded),
+            label: const Text(
+              'ALERT TRUSTED CONTACTS',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
               ),
             ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+              side: BorderSide(
+                color: Colors.redAccent.withOpacity(0.6),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(17),
+              ),
+            ),
+          ),
+        ),
+
 
             const SizedBox(height: 18),
 
