@@ -1,17 +1,110 @@
-# ai_guardian
+# 🛡️ AI Guardian
 
-A new Flutter project.
+### Don't just send an SOS. Stay with the user.
 
-## Getting Started
+**AI Guardian** is a situation-aware AI emergency companion designed to help users respond to dangerous or uncertain situations using voice input, device context, trusted contacts, adaptive emergency modes, and safety guidance.
 
-This project is a starting point for a Flutter application.
+Built as a prototype for **iQOO Hackathon 2026**.
 
-A few resources to get you started if this is your first Flutter project:
+---
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## 👥 Team
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### NPC's
+
+**Project:** AI Guardian  
+**Hackathon:** iQOO Hackathon 2026  
+**Track:** Smart Living  
+**Platform:** Android  
+**Framework:** Flutter
+
+---
+
+## 🚨 The Problem
+
+During an emergency, people may not have enough time or clarity to decide what action to take.
+
+Traditional SOS systems generally follow a simple flow:
+
+> Detect → Notify
+
+But an emergency can be much more complex.
+
+A person may be:
+
+- Being followed
+- In physical danger
+- Injured
+- Involved in an accident
+- Lost in an unfamiliar location
+- Running out of battery
+- Without network connectivity
+
+In these situations, simply sending an SOS may not be enough.
+
+The user needs a system that can understand the situation and help decide what to do next.
+
+---
+
+## 💡 Our Solution
+
+AI Guardian transforms the traditional emergency button into a **situation-aware emergency companion**.
+
+Instead of simply sending an alert, AI Guardian follows:
+
+> **Understand → Decide → Act → Monitor → Adapt**
+
+The user can describe their situation using voice, and AI Guardian analyzes the situation and combines it with available device context such as:
+
+- 📍 Location
+- 🔋 Battery
+- 📶 Network
+- 🎤 Voice input
+- 👥 Trusted contacts
+
+Based on this context, the application provides an adaptive emergency response.
+
+---
+
+## 🧠 How AI Guardian Works
+
+```text
+                 USER
+                  │
+                  ▼
+           Voice / Quick SOS
+                  │
+                  ▼
+        ┌──────────────────┐
+        │ Speech Recognition│
+        └────────┬─────────┘
+                 │
+                 ▼
+        ┌──────────────────┐
+        │ Situation Engine │
+        └────────┬─────────┘
+                 │
+                 ▼
+        ┌──────────────────┐
+        │ Context Analysis │
+        │                  │
+        │ Location         │
+        │ Battery          │
+        │ Network          │
+        └────────┬─────────┘
+                 │
+                 ▼
+        ┌──────────────────┐
+        │ Adaptive Decision│
+        │      Layer       │
+        └────────┬─────────┘
+                 │
+                 ▼
+       ┌─────────────────────┐
+       │ Emergency Assistance │
+       │                     │
+       │ Call Contact        │
+       │ Share Alert         │
+       │ AI Guidance         │
+       │ Find Safe Place     │
+       └─────────────────────┘
