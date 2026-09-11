@@ -128,10 +128,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
-                    child: const Icon(
-                      Icons.shield_rounded,
-                      color: Colors.white,
-                      size: 28,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(15),
+                      child: Image.asset(
+                        'assets/images/ai_guardian_app_icon.png',
+                        width: 48,
+                        height: 48,
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
 
